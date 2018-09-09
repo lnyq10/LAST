@@ -1,7 +1,21 @@
-set(ext_include ${PROJECT_SOURCE_DIR}/abc/include)
-set(ext_include ${PROJECT_SOURCE_DIR}/abc/include PARENT_SCOPE)
+cmake_minimum_required(VERSION 3.12)
+project(abc_LAST_if)
 
-set(ext_lib ${PROJECT_SOURCE_DIR}/abc/lib)
-set(ext_lib ${PROJECT_SOURCE_DIR}/abc/lib PARENT_SCOPE)
+set(CMAKE_CXX_STANDARD 17)
+add_definitions(-DABC_NAMESPACE=abc)
 
-set(abc_libraries ${ext_lib}/libabc.a dl pthread readline PARENT_SCOPE)
+
+add_executable(abc_LAST_if main.cpp)
+add_subdirectory(abc)
+add_subdirectory(util)
+add_subdirectory(abc/include/map/if)
+
+include_directories(${ext_include})
+include_directories(${ext_lib})
+include_directories(${util_include})
+
+
+target_link_libraries(abc_LAST_if
+        ${if_libraries}
+        ${abc_libraries}
+        )
