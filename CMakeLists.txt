@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_definitions(-DABC_NAMESPACE=abc)
 
 
-add_executable(abc_LAST main.cpp)
+add_executable(abc_LAST main.cpp util/abc_api.cpp)
 add_subdirectory(abc)
 add_subdirectory(util)
 
