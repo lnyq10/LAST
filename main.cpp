@@ -42,7 +42,9 @@ int main() {
 
         vCone = Vec_PtrAlloc(100);
         vSupp = Vec_PtrAlloc(100);
+        Abc_NodeDeref_rec(pNode);
         Abc_NodeMffcConeSupp(pNode, vCone, vSupp);
+        Abc_NodeRef_rec(pNode);
         std::cout << Vec_PtrSize(vCone) << std::endl;
         std::cout << "The supp size is " << vSupp->nSize << std::endl;
         Abc_NodeMffcConeSuppPrint(pNode);
