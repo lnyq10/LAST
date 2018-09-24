@@ -2,9 +2,20 @@
 // Created by niqiu on 18-9-24.
 //
 
-#include <cstdio>
 #include "util.h"
-using namespace abc;
+
+
+map<int ,int> getNtkSetInfo(vector<Abc_Ntk_t*> pNtkSet){
+    vector<Abc_Ntk_t*>::size_type ix;
+    map<int, int> pNtkSetInfo;
+    int ConeSize;
+    for(ix = 0; ix != pNtkSet.size(); ix++){
+        ConeSize = Abc_NtkNodeNum(pNtkSet[ix]);
+        pNtkSetInfo[ConeSize]++;
+    }
+    return pNtkSetInfo;
+}
+
 
 void NodeMffcConeSupp(Abc_Obj_t* pNode, Vec_Ptr_t* vCone, Vec_Ptr_t* vSupp, bool print){
     Abc_NodeDeref_rec(pNode);
@@ -12,7 +23,7 @@ void NodeMffcConeSupp(Abc_Obj_t* pNode, Vec_Ptr_t* vCone, Vec_Ptr_t* vSupp, bool
     Abc_NodeRef_rec(pNode);
 
     if(print) {
-        printf("Printing the MFFC for node %s", Abc_ObjName(pNode));
+        printf("Printing the MFFC for node %s\n", Abc_ObjName(pNode));
         Abc_Obj_t *pObj;
         int i;
         printf("Node = %6s : Supp = %3d  Cone = %3d  (",
@@ -28,7 +39,33 @@ Abc_Ntk_t* ReadBlif(char* filename){
     return blif_ntk;
 }
 
-void map_LUT(char* old_filename, char* new_filename){
+vector<Abc_Ntk_t*> getMffcNtk(Abc_Ntk_t* pNtk, int ConeSize){
+    Vec_Ptr_t *vCone, *vSupp;
+    vector<Abc_Ntk_t*> pNtkSet;
+
+    int i = 0;
+    Abc_Obj_t* pNode;
+    Abc_NtkForEachNode(pNtk, pNode, i){
+
+            vCone = Vec_PtrAlloc(100);
+            vSupp = Vec_PtrAlloc(100);
+            NodeMffcConeSupp(pNode, vCone, vSupp, false);
+            //cout << "Mffc size is: " << Abc_NodeMffcSize(pNode) << endl;
+
+            if(vCone->nSize >= ConeSize) {
+                auto temp = (Abc_Obj_t *) vCone->pArray[vCone->nSize - 1];
+                Abc_Ntk_t *pNtkNew = Abc_NtkCreateMffc(pNtk, temp, Abc_ObjName(pNode));
+                //std::cout << Vec_PtrSize(vCone) << " " << Abc_NtkNodeNum(pNtkNew) << endl;
+                pNtkSet.push_back(pNtkNew);
+            }
+
+            Vec_PtrFree(vCone);
+            Vec_PtrFree(vSupp);
+    }
+    return pNtkSet;
+}
+
+/*void map_LUT(char* old_filename, char* new_filename){
     Abc_Frame_t * pAbc;
     Abc_Start();
     pAbc = Abc_FrameGetGlobalFrame();
@@ -40,17 +77,4 @@ void map_LUT(char* old_filename, char* new_filename){
     sprintf(command,"write_blif %s",new_filename);
     Cmd_CommandExecute(pAbc, command);
     Abc_Stop();
-}
-
-int Optimization_Num(Abc_Ntk_t* old_Ntk, bool print){
-    int Ideal_Lut;
-    int Real_Lut=old_Ntk->nObjCounts[7];
-    if(old_Ntk->vCis->nSize<=4){
-        Ideal_Lut=1;
-    }
-    else Ideal_Lut=(old_Ntk->vCis->nSize+1)/3;
-    if(print){
-        std::cout<<"The MFFC now uses "<<Real_Lut<<" Luts, after the optimization, ideally we can reduce it to "<<Ideal_Lut<<" Luts."<<std::endl;
-    }
-    return Real_Lut-Ideal_Lut;//the number of LUTs that we can reduce by the optimization.
-}
+}*/
