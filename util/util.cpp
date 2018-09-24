@@ -41,3 +41,16 @@ void map_LUT(char* old_filename, char* new_filename){
     Cmd_CommandExecute(pAbc, command);
     Abc_Stop();
 }
+
+int Optimization_Num(Abc_Ntk_t* old_Ntk, bool print){
+    int Ideal_Lut;
+    int Real_Lut=old_Ntk->nObjCounts[7];
+    if(old_Ntk->vCis->nSize<=4){
+        Ideal_Lut=1;
+    }
+    else Ideal_Lut=(old_Ntk->vCis->nSize+1)/3;
+    if(print){
+        std::cout<<"The MFFC now uses "<<Real_Lut<<" Luts, after the optimization, ideally we can reduce it to "<<Ideal_Lut<<" Luts."<<std::endl;
+    }
+    return Real_Lut-Ideal_Lut;//the number of LUTs that we can reduce by the optimization.
+}
