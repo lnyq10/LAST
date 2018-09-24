@@ -15,4 +15,6 @@ Abc_Ntk_t* ReadBlif(char* filename);
 
 void map_LUT(char* old_filename, char* new_filename);
 
+int Optimization_Num(Abc_Ntk_t* old_Ntk, bool print);
+
 #endif //ABC_LAST_UTIL_H
