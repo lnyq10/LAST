@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <vector>
 #include <map>
+#include <cmath>
 
 using namespace abc;
 using namespace std;
