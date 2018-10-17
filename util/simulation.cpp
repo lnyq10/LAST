@@ -137,12 +137,14 @@ void simulate_weight(decomposed_chart* decomposedChart, Abc_Ntk_t* MFFC_network,
     int row[decomposedChart->row];
     int column[decomposedChart->column];
     int x, y;
+    Abc_Obj_t* PNode;
     for(int m=0; m<decomposedChart->row; m++){
         row[m]=input[decomposedChart->array_row[m]-1]->dTemp;
     }
     for(int m=0; m<decomposedChart->column; m++){
         column[m]=input[decomposedChart->array_column[m]-1]->dTemp;
-    }decomposedChart->column);
+    }
+    x=binary_inverse(column, decomposedChart->column);
     y=binary_inverse(row, decomposedChart->row);
     decomposedChart->weight[x][y]++;
 }
