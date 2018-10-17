@@ -16,6 +16,51 @@
 using namespace abc;
 using namespace std;
 
+class decomposed_chart{
+public:
+    int** decomposedchart;
+    int row;
+    int column;
+    int row_size;
+    int column_size;
+    int* array_row;
+    int* array_column;
+    double ** weight;
+    void print_decomposed_chart();
+    void print_weight();
+    void clear_weight();
+    decomposed_chart(int** truth_table, int row, int column, int* array_row, int* array_column){
+        this->decomposedchart=truth_table;
+        this->column=column;
+        this->row=row;
+        this->array_column=array_column;
+        this->array_row=array_row;
+        this->row_size=pow(2, row);
+        this->column_size=pow(2, column);
+        weight=new double*[column_size];
+        for(int i=0; i<column_size; i++){
+            weight[i]=new double[row_size];
+        }
+        for(int i=0; i<column_size; i++){
+            for(int j=0; j<row_size; j++){
+                weight[i][j]=0;
+            }
+        }
+    }
+    ~decomposed_chart(){
+        for(int i=0; i<column; i++){
+            delete[] decomposedchart[i];
+        }
+        delete[] decomposedchart;
+        //delete[] array_row;
+        //delete[] array_column;
+        for(int i=0; i<column; i++){
+            delete[] weight[i];
+        }
+        delete[] weight;
+    }
+};
+
 int inverse(int num);
 
 void binary(int* array, int size, int num);
