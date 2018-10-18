@@ -3,6 +3,49 @@
 //
 #include "simulation.h"
 
+void decomposed_chart::print_weight() {
+    for(int i=0; i<column_size; i++){
+        std::cout<<" |"<<i;
+    }
+    std::cout<<" |"<<std::endl;
+    for(int i=0; i<row_size; i++){
+        for(int j=0; j<=column_size; j++){
+            std::cout<<"---";
+        }
+        std::cout<<std::endl;
+        std::cout<<i<<"| ";
+        for(int j=0; j<column_size; j++){
+            std::cout<<setiosflags(ios::fixed)<<setprecision(4)<<weight[j][i]<<" |";
+        }
+        std::cout<<std::endl;
+    }
+}
+void decomposed_chart::print_decomposed_chart() {
+    for(int i=0; i<column_size; i++){
+        std::cout<<" |"<<i;
+    }
+    std::cout<<" |"<<std::endl;
+    for(int i=0; i<row_size; i++){
+        for(int j=0; j<=column_size; j++){
+            std::cout<<"---";
+        }
+        std::cout<<std::endl;
+        std::cout<<i<<"| ";
+        for(int j=0; j<column_size; j++){
+            std::cout<<decomposedchart[j][i]<<" |";
+        }
+        std::cout<<std::endl;
+    }
+}
+
+void decomposed_chart::clear_weight() {
+    for(int i=0; i<this->column; i++){
+        for(int j=0; j<this->row; j++){
+            this->weight[i][j]=0;
+        }
+    }
+}
+
 int inverse(int num){
     if(num==1) return 0;
     else if(num==0) return 1;
