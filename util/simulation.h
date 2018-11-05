@@ -11,27 +11,28 @@
 #include <map>
 #include <cmath>
 #include <iomanip>
-#include "util.h"
+
 
 using namespace abc;
 using namespace std;
 
 class decomposed_chart{
 public:
-    int** decomposedchart;
+    int** decompose_chart;
+    double ** weight;
+    int* array_row;
+    int* array_column;
     int row;
     int column;
     int row_size;
     int column_size;
-    int* array_row;
-    int* array_column;
-    double ** weight;
+
     void print_decomposed_chart();
     void print_weight();
     void clear_weight();
     void change_set(int* bound_set, int* free_set);
     decomposed_chart(int** truth_table, int row, int column, int* array_row, int* array_column){
-        this->decomposedchart=truth_table;
+        this->decompose_chart=truth_table;
         this->column=column;
         this->row=row;
         this->array_column=array_column;
@@ -50,9 +51,9 @@ public:
     }
     ~decomposed_chart(){
         for(int i=0; i<column; i++){
-            delete[] decomposedchart[i];
+            delete[] decompose_chart[i];
         }
-        delete[] decomposedchart;
+        delete[] decompose_chart;
         //delete[] array_row;
         //delete[] array_column;
         for(int i=0; i<column; i++){
@@ -68,14 +69,18 @@ void binary(int* array, int size, int num);
 
 void simulate_node(Abc_Ntk_t* LUT_network, Abc_Obj_t* pnode);
 
-int simulation(Abc_Ntk_t* LUT_network, int* bound_set, int* free_set, int bound_size, int free_size, int input_row, int input_column);
+int simulation(Abc_Ntk_t* LUT_network, int* bound_set, int* free_set,\
+        int bound_size, int free_size, int input_row, int input_column);
 
-decomposed_chart create_decomposed_chart(Abc_Ntk_t* LUT_network, int* bound_set, int* free_set, int num);
+decomposed_chart* create_decomposed_chart(Abc_Ntk_t* LUT_network, int* bound_set,\
+        int* free_set, int num);
 
 int binary_inverse(int* array, int size);
 
-void simulate_weight(decomposed_chart* decomposedChart, Abc_Ntk_t* MFFC_network, vector<Abc_Obj_t*> input);
+void simulate_weight(decomposed_chart* decomposedChart, \
+        Abc_Ntk_t* MFFC_network, vector<Abc_Obj_t*> input);
 
-void create_weight(decomposed_chart* decomposedChart, Abc_Ntk_t* MFFC_network, Abc_Ntk_t* LUT_network, vector<Abc_Obj_t*> input);
+void create_weight(decomposed_chart* decomposedChart, \
+        Abc_Ntk_t* MFFC_network, Abc_Ntk_t* LUT_network, vector<Abc_Obj_t*> input);
 
 #endif //ABC_LAST_SIMULATION_H
