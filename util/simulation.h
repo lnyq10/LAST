@@ -29,6 +29,7 @@ public:
     void print_decomposed_chart();
     void print_weight();
     void clear_weight();
+    void change_set(int* bound_set, int* free_set);
     decomposed_chart(int** truth_table, int row, int column, int* array_row, int* array_column){
         this->decomposedchart=truth_table;
         this->column=column;
