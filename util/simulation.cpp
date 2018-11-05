@@ -3,6 +3,45 @@
 //
 #include "simulation.h"
 
+void decomposed_chart::change_set(int* bound_set, int* free_set) {
+    int new_dc[column_size][row_size];
+    double new_weight[column_size][row_size];
+    for(int n=0; n<column_size; n++){
+        for(int m=0; m<row_size;m++){
+            new_dc[n][m]=decomposedchart[n][m];
+            new_weight[n][m]=weight[n][m];
+        }
+    }
+    int array[column+row];
+    int input_column[column];
+    int input_row[row];
+    int new_column, new_row;
+    for(int n=0; n<column_size; n++){
+        for(int m=0; m<row_size; m++){
+            binary(input_column, column, n);
+            binary(input_row, row, m);
+            for(int j=0; j<column; j++){
+                array[array_column[j]]=input_column[j];
+            }
+            for(int j=0; j<row; j++){
+                array[array_row[j]]=input_row[j];
+            }
+            for(int j=0; j<column; j++){
+                input_column[j]=array[bound_set[j]];
+            }
+            for(int j=0; j<row; j++){
+                input_row[j]=array[free_set[j]];
+            }
+            new_column=binary_inverse(input_column, column);
+            new_row=binary_inverse(input_row, row);
+            weight[new_column][new_row]=new_weight[n][m];
+            decomposedchart[new_column][new_row]=new_dc[n][m];
+        }
+    }
+    array_row=free_set;
+    array_column=bound_set;
+}
+
 void decomposed_chart::print_weight() {
     for(int i=0; i<column_size; i++){
         std::cout<<" |"<<i;
