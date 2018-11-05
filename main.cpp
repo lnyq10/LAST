@@ -1,31 +1,130 @@
 #include <iostream>
+#include <cassert>
 #include <abc_api.h>
 #include <util.h>
+#include <simulation.h>
+#include <approx.h>
 #include <vector>
 #include <map>
-#include <network.h>
 
 using namespace abc;
 using namespace std;
 
-void sta();
+
 void nodetest();
 void simu_test();
 void print_node_info(Abc_Ntk_t* blif_ntk);
 void transform(char* filename);
 
+
+void printMffcInfo(Abc_Ntk_t* pNtk){
+    cout << "Level = " << Abc_NtkLevel(pNtk) << endl;
+    cout << "Number of internal nodes = " << Abc_NtkNodeNum(pNtk) << endl;
+    cout << "Number of Pi = " << Abc_NtkPiNum(pNtk) << endl;
+    assert(Abc_NtkPoNum(pNtk) == 1);
+}
+
+
+
 int main() {
+    Abc_Obj_t* pNode;
+    int j;
 
-    //char* filename = (char*) "./benchmark/pm1.blif";
-    char* newfilename = (char*) "./benchmark/z4ml.blif";        //the name of the file which we use to store the new LUT network
+    char* filename = (char*) "./LUT_benchmark/C880_new.blif";
+    char* newfilename = (char*) "out.blif";//the name of the file which we use to store the new LUT network
+    char* old = (char*) "origin_mffc.blif";
     //map_LUT(filename, newfilename);
-    auto blif_ntk = ReadBlif(newfilename);
-    int first[4]={1, 2, 3, 4};
-    int second[12]={5,6,7};
-    truth_table truthTable=create_truth_table(blif_ntk,first,second,7);
-    truthTable.print_truth_table();
+    Abc_Ntk_t* origin_Ntk = ReadBlif(filename);
+    //cout << Abc_NtkNodeNum(origin_Ntk) << endl;
+
+    int PiSize = 11;//Change this to change the PiSize you want to approximate
+
+    vector<Mffc*> mffc_set = getMffcNtk(origin_Ntk, PiSize, PiSize);
+    //printMffcSetInfo(mffc_set, false);
+    vector<Mffc*>::size_type ix = 0;
+    Mffc* mffc = nullptr;
+    int ctr = 0;
+    const int target = 0;
+
+    for(ix = 0; ix != mffc_set.size(); ix++){
+        if(Abc_NtkPiNum(mffc_set[ix]->ref) == PiSize){
+            mffc = mffc_set[ix];
+            ctr++;
+            if(ctr == target) break;
+        }
+    }
+    assert(mffc != nullptr);
+
+    Io_WriteBlifLogic(mffc->ref, old, 1);
+
+    auto mffc2 = local_approx(origin_Ntk, mffc, PiSize);
 
 
+    Io_WriteBlifLogic(mffc->ref, newfilename, 1);
+    Abc_NtkDelete(origin_Ntk);
+    delete mffc;
+    for(ix = 0; ix != mffc_set.size(); ix++){
+        if(mffc_set[ix] == mffc) continue;
+        delete mffc_set[ix];
+    }
+    return 0;
+}
+
+void Modify_Mffc(Mffc pMffc, Abc_Ntk_t* pNtk){
+    //Try to delete a node
+    Vec_Ptr_t *vCone, *vSupp;
+    Abc_Obj_t* pNode;
+    int i,j;
+
+    vCone = Vec_PtrAlloc(100);
+    vSupp = Vec_PtrAlloc(100);
+    NodeMffcConeSupp(pMffc.root, vCone, vSupp, false);
+
+    Vec_PtrForEachEntry(Abc_Obj_t*, vSupp, pNode, i){
+        assert(pNode->pNtk == pNtk);
+        cout << "Object name is " << Abc_ObjName(pNode) << endl;
+        cout << "It has ID " << Abc_ObjId(pNode) << endl;
+        char* victim = (char*) "eee";
+        if(strcmp(Abc_ObjName(pNode), victim) == 0) {
+            cout << "Deleteing Node " << victim << endl;
+            Abc_NtkDeleteObj(pNode);
+        }
+    }
+    Vec_PtrFree(vCone);
+    Vec_PtrFree(vSupp);
+}
+
+
+void testMffc(){
+    char* filename = (char*) "./benchmark/ctrl.blif";
+    char* newfilename = (char*) "out.blif";        //the name of the file which we use to store the new LUT network
+    //map_LUT(filename, newfilename);
+    Abc_Ntk_t* blif_ntk = ReadBlif(filename);
+
+    auto mffc = getMffcNtk(blif_ntk, 10);
+    auto mffc1 = mffc[0];
+
+    //cout << "Root name is " << Abc_ObjName(mffc1.root) << endl;
+
+    //Modify_Mffc(mffc1, blif_ntk);
+
+    Abc_Obj_t* pNode;
+    int i,j;
+    cout << "Printing information for the reference network" << endl;
+    vector<Abc_Obj_t*>::size_type ix = 0;
+    for(ix = 0; ix!= mffc1->Pi_origin.size(); ix++){
+        cout << "Object name: " << Abc_ObjName(mffc1->Pi_origin[ix]) << endl;
+        cout << "Object ID: " << Abc_ObjId(mffc1->Pi_origin[ix]) << endl;
+    }
+    cout << "*************" << endl;
+    Abc_NtkForEachPi(mffc1->ref, pNode, i){
+        cout << "Object name: " << Abc_ObjName(pNode) << endl;
+        cout << "Object ID: " << Abc_ObjId(pNode) << endl;
+    }
+
+
+    Io_WriteBlifLogic(blif_ntk, newfilename, 1);
+    Abc_NtkDelete(blif_ntk);
 }
 
 void transform(char* filename){
@@ -58,39 +157,6 @@ void transform(char* filename){
     }
     Abc_Stop();
 }
-
-
-void simu_test(){
-    Abc_Start();
-    abc::Abc_Frame_t * pAbc = abc::Abc_FrameGetGlobalFrame();
-    char Command[1000];
-    sprintf( Command, "read_genlib -v %s", "./abc/lib/mcnc.genlib" );
-    if ( abc::Cmd_CommandExecute( pAbc, Command ) )
-    {
-        fprintf( stdout, "Cannot execute command \"%s\".\n", Command );
-        assert( 0 );
-    }
-    // input the original circuit
-    //sprintf( Command, "read ./benchmark/c6288.blif");
-    sprintf( Command, "read ./benchmark/ectl2.blif");
-    if ( abc::Cmd_CommandExecute( pAbc, Command ) )
-    {
-        fprintf( stdout, "Cannot execute command \"%s\".\n", Command );
-        assert( 0 );
-    }
-    auto pNtk = Abc_FrameReadNtk(pAbc);
-    //char* in_filename = (char*) "./in/1000/c6288.in";
-    char* in_filename = (char*) "./in/ectl.in";
-
-    user::network_t ntk(pNtk, 10, in_filename);
-    clock_t t = clock();
-    ntk.GetAllValue(1);
-    cout << "Simulation time: "<<clock() - t << endl;
-
-
-    abc::Abc_Stop();
-}
-
 
 void nodetest(){
     char* filename = (char*) "./benchmark/ectl.blif";
@@ -130,29 +196,6 @@ void nodetest(){
 }
 
 
-
-void sta(){
-    char* filename = (char*) "./benchmark/hyp.blif";
-    auto blif_ntk = ReadBlif(filename);
-
-    vector<Abc_Ntk_t*> pNtkSet = getMffcNtk(blif_ntk, 7);
-    map<int, int> pNtkSetInfo = getNtkSetInfo(pNtkSet);
-    auto jx = pNtkSetInfo.begin();
-    for(jx = jx; jx != pNtkSetInfo.end(); jx++ ){
-        cout << "The cone size " << jx->first << " appears "\
-             << jx->second << " Times" << endl;
-    }
-
-
-    vector<Abc_Ntk_t*>::size_type ix;
-    for(ix = 0; ix != pNtkSet.size(); ix++) {
-        //Io_WriteBlifLogic(pNtkSet[ix], (char *) "out.blif", 0);
-        Abc_NtkDelete(pNtkSet[ix]);
-    }
-
-    Abc_NtkDelete(blif_ntk);
-}
-
 void print_node_info(Abc_Ntk_t* blif_ntk){
     int j;
     Abc_Obj_t* pNode;
@@ -163,5 +206,4 @@ void print_node_info(Abc_Ntk_t* blif_ntk){
         }
 
 }
-
 
