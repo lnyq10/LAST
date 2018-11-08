@@ -324,3 +324,113 @@ void decomposed_chart::clear_weight() {
     }
 }
 
+void simulate_whole(Abc_Ntk_t* LUT_network){
+    srand(time(NULL));
+    int level_max=Abc_NtkLevel(LUT_network);            //record the whole level of the network
+    int count=100000;
+    Abc_Obj_t* pin;
+    Vec_Ptr_t** Nodes=new Vec_Ptr_t*[level_max];        //base on the level of the network, I use a 2d Vector to store all the nodes with different level
+    for(int k=0;k<level_max;k++){
+        Nodes[k]=Vec_PtrAlloc(16);
+    }
+    Abc_Obj_t* pNode;
+    int j;
+    Abc_NtkForEachNode(LUT_network, pNode, j) {
+            int level = pNode->Level - 1;
+            if (level >= 0) {
+                Vec_PtrPush(Nodes[level], pNode);
+            }
+        }
+    for(int g=0; g<LUT_network->vPis->nSize; g++){
+        pin=(Abc_Obj_t*)(LUT_network->vPis->pArray[g]);
+        pin->sample=new int[count];
+    }
+    for (int h = 0; h < level_max; h++) {                      //simulate all the nodes base on their levels, we should simulate the low-level nodes first, because the high-level nodes may take the low-level nodes as the Fanins
+        int size = Nodes[h]->nSize;
+        for (int j = 0; j < size; j++) {
+            pin = (Abc_Obj_t *) Nodes[h]->pArray[j];
+            pin->sample=new int[count];
+        }
+    }
+    for(int i=0; i<count; i++) {
+        for (int k = 0; k < LUT_network->vPis->nSize; k++) {
+            pin = (Abc_Obj_t *) (LUT_network->vPis->pArray[k]);
+            pin->dTemp = rand() % 2;
+            *((int*)(pin->sample)+i) = pin->dTemp;
+        }
+        for (int n = 0; n < level_max; n++) {                      //simulate all the nodes base on their levels, we should simulate the low-level nodes first, because the high-level nodes may take the low-level nodes as the Fanins
+            int size = Nodes[n]->nSize;
+            for (int l = 0; l < size; l++) {
+                pin = (Abc_Obj_t *) Nodes[n]->pArray[l];
+                simulate_node(LUT_network, pin);
+                *((int*)(pin->sample)+i) = pin->dTemp;
+            }
+        }
+    }
+    for(int k=0;k<level_max;k++){
+            Vec_PtrFree(Nodes[k]);
+    }
+    delete[] Nodes;
+}
+
+void Create_Weight(decomposed_chart* decomposedChart, Mffc MFFC_network, int* bound_set, int* free_set){
+    int count=100000;
+    int x,y;
+    int bound_input[decomposedChart->column];
+    int free_input[decomposedChart->row];
+    Abc_Obj_t* pnode;
+    Abc_Ntk_t* MFFC=MFFC_network.ref;
+    int level_max=Abc_NtkLevel(MFFC);
+    /*for(int i=0; i<input.size(); i++){
+        pnode=((Abc_Obj_t*)MFFC->vPis->pArray[i]);
+        pnode->sample=input[i]->sample;
+    }*/
+    Vec_Ptr_t** Nodes=new Vec_Ptr_t*[level_max];        //base on the level of the network, I use a 2d Vector to store all the nodes with different level
+    for(int k=0;k<level_max;k++){
+        Nodes[k]=Vec_PtrAlloc(16);
+    }
+    Abc_Obj_t* pNode;
+    int j;
+    Abc_NtkForEachNode(MFFC, pNode, j) {
+            int level = pNode->Level - 1;
+            if (level >= 0) {
+                Vec_PtrPush(Nodes[level], pNode);
+            }
+        }
+    for(int i=0; i<count; i++){
+        for(int n=0; n<MFFC_network.Pi_origin.size(); n++){
+            pnode=((Abc_Obj_t*)MFFC->vPis->pArray[n]);
+            pnode->dTemp=*((int*)MFFC_network.Pi_origin[n]->sample+i);
+        }
+        for (int n = 0; n < level_max; n++) {                      //simulate all the nodes base on their levels, we should simulate the low-level nodes first, because the high-level nodes may take the low-level nodes as the Fanins
+            int size = Nodes[n]->nSize;
+            for (int l = 0; l < size; l++) {
+                pnode = (Abc_Obj_t *) Nodes[n]->pArray[l];
+                simulate_node(MFFC, pnode);
+            }
+        }
+        for(int j=0; j<decomposedChart->column; j++){
+            pnode=Abc_NtkObj(MFFC, decomposedChart->array_column[j]);
+            bound_input[j]=pnode->dTemp;
+        }
+        for(int j=0; j<decomposedChart->row; j++){
+            pnode=Abc_NtkObj(MFFC, decomposedChart->array_row[j]);
+            free_input[j]=pnode->dTemp;
+        }
+        x=binary_inverse(bound_input, decomposedChart->column);
+        y=binary_inverse(free_input, decomposedChart->row);
+        /*delete[] bound_input;
+        delete[] free_input;*/
+        decomposedChart->weight[x][y]++;
+    }
+    for(int i=0; i<decomposedChart->column_size; i++){
+        for(int j=0; j<decomposedChart->row_size; j++){
+            decomposedChart->weight[i][j]=decomposedChart->weight[i][j]/count;
+        }
+    }
+    for(int k=0;k<level_max;k++){
+            Vec_PtrFree(Nodes[k]);
+    }
+    delete[] Nodes;
+}
+
