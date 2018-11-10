@@ -35,9 +35,10 @@ int main() {
     char* old = (char*) "origin_mffc.blif";
     //map_LUT(filename, newfilename);
     Abc_Ntk_t* origin_Ntk = ReadBlif(filename);
+
     //cout << Abc_NtkNodeNum(origin_Ntk) << endl;
 
-    int PiSize = 11;//Change this to change the PiSize you want to approximate
+    int PiSize = 12;//Change this to change the PiSize you want to approximate
 
     vector<Mffc*> mffc_set = getMffcNtk(origin_Ntk, PiSize, PiSize);
     //printMffcSetInfo(mffc_set, false);
@@ -54,12 +55,13 @@ int main() {
         }
     }
     assert(mffc != nullptr);
-
+    //simulate_whole(origin_Ntk);
+    //simulate_whole(origin_Ntk);
     Io_WriteBlifLogic(mffc->ref, old, 1);
 
     auto mffc2 = local_approx(origin_Ntk, mffc, PiSize);
 
-
+   // int a = 1;
     Io_WriteBlifLogic(mffc->ref, newfilename, 1);
     Abc_NtkDelete(origin_Ntk);
     delete mffc;
