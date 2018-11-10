@@ -83,8 +83,7 @@ void simulate_weight(decomposed_chart* decomposedChart, \
 void create_weight(decomposed_chart* decomposedChart, \
         Abc_Ntk_t* MFFC_network, Abc_Ntk_t* LUT_network, vector<Abc_Obj_t*> input);
 
-void simulate_whole(Abc_Ntk_t* LUT_network);
+vector<vector<int>> simulate_whole(Abc_Ntk_t* LUT_network);
 
-void Create_Weight(decomposed_chart* decomposedChart, Mffc MFFC_network, int* bound_set, int* free_set);
-
+void Create_Weight(decomposed_chart* decomposedChart, Mffc MFFC_network, int* bound_set, int* free_set,  vector<vector<int>>& array);
 #endif //ABC_LAST_SIMULATION_H
