@@ -9,6 +9,7 @@
 #include "util.h"
 #include "algorithm"
 #include <sstream>
+#include <vector>
 
 enum pattern_type{
     ALL_ONE, ALL_ZERO, PATTERN, COMPLTD_PATTERN, UNDECIDED
@@ -40,35 +41,8 @@ private:
 };
 
 
-Mffc* local_approx(Abc_Ntk_t* pNtk, Mffc* mffc, int PiSize);
+Mffc* local_approx(Abc_Ntk_t* pNtk, Mffc* mffc, int PiSize, int min_level = 0);
 int* choose_four(const int* arr, int size, int index);
-void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSize);
+void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSize, bool initial=true);
 
 #endif //ABC_LAST_APPROX_H
-static inline void Vec_IntPushMem( Mem_Step_t * pMemMan, Vec_Int_t * p, int Entry )
-{
-    if ( p->nSize == p->nCap )
-    {
-        int * pArray;
-        int i;
-
-        if ( p->nSize == 0 )
-            p->nCap = 1;
-        if ( pMemMan )
-            pArray = (int *)Mem_StepEntryFetch( pMemMan, p->nCap * 8 );
-        else
-            pArray = ABC_ALLOC( int, p->nCap * 2 );
-        if ( p->pArray )
-        {
-            for ( i = 0; i < p->nSize; i++ )
-                pArray[i] = p->pArray[i];
-            if ( pMemMan )
-                Mem_StepEntryRecycle( pMemMan, (char *)p->pArray, p->nCap * 4 );
-            else
-                ABC_FREE( p->pArray );
-        }
-        p->nCap *= 2;
-        p->pArray = pArray;
-    }
-    p->pArray[p->nSize++] = Entry;
-}

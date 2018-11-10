@@ -175,98 +175,7 @@ int* pattern::p_cracker_helper(int ** dc, double** wt, int row_head, int row_tai
         return ans;
     }
 }
-/**Function*************************************************************
 
-  Synopsis    []
-
-  Description [Core function for approximation]
-
-***********************************************************************/
-Mffc* local_approx(Abc_Ntk_t* pNtk, Mffc* mffc, int PiSize){
-
-    //Choose a mffc
-
-    int* PiSet = new int[PiSize];
-    int i, j = 0;
-    Abc_Obj_t* pNode;
-    Abc_NtkForEachPi(mffc->ref, pNode, i){
-        PiSet[j] = Abc_ObjId(pNode);
-        j++;
-    }
-
-    pattern* pt, *pt_min = nullptr;
-    int *nC4 = nullptr;
-    int index;
-    decomposed_chart* dc, *dc_min = nullptr;
-    int bSet[4] = {0};
-    int fSet[4] = {0};
-    int* bSet_min = new int[4];
-    int* fSet_min = new int[PiSize - 4];
-    for(i = 0; i < NChooseR(PiSize, 4); i++) {
-        //NChooseR(PiSize, 4)
-        index = i;//3
-        nC4 = choose_four(PiSet, PiSize, index);
-        for (j = 0; j < PiSize; j++) {
-            //cout << PiSet[i] << endl;
-            if (j < 4) bSet[j] = nC4[j];
-            else fSet[j - 4] = nC4[j];
-        }
-        //Assigning Pis to bound set and free set
-        delete[] nC4;
-        dc = create_decomposed_chart(mffc->ref, bSet, fSet, PiSize);
-        create_weight(dc, mffc->ref, pNtk, mffc->Pi_origin);
-        pt = new pattern(16, (int) pow(2, PiSize - 4));
-        pt->pattern_cracker(dc->decompose_chart, dc->weight);
-        if(i == 0) {
-            pt_min = pt;
-            dc_min = dc;
-            for (int k = 0; k < PiSize; k++) {
-                if (k < 4) bSet_min[k] = bSet[k];
-                else fSet_min[k - 4] = fSet[k-4];
-            }
-        }
-        else{
-            if(pt->get_error() < pt_min->get_error()){
-                delete dc_min;
-                delete pt_min;
-                dc_min = dc;
-                pt_min = pt;
-                for (int k = 0; k < PiSize; k++) {
-                    if (k < 4) bSet_min[k] = bSet[k];
-                    else fSet_min[k - 4] = fSet[k-4];
-                }
-            }
-            else{
-                delete dc;
-                delete pt;
-            }
-        }
-        if(pt_min->get_error() == 0) break;
-    }
-    assert(pt_min && dc_min);
-    //Find the minimum pattern
-    mffc->error += pt_min->get_error();
-    dc_min->print_decomposed_chart();
-    dc_min->print_weight();
-    pt_min->print_info(false);
-
-
-    modify_mffc(mffc->ref,pt_min, bSet_min, fSet_min, PiSize-4);
-
-    /*
-    for(ix = 0; ix != mffc_set.size(); ix++){
-        if(mffc_set[ix] == mffc) continue;
-        delete mffc_set[ix];
-    }
-     */
-    //for(int i = 0; i < dc.)
-    delete[] PiSet;
-    delete[] bSet_min;
-    delete[] fSet_min;
-    delete dc_min;
-    delete pt_min;
-    return mffc;
-}
 /**Function*************************************************************
 
   Synopsis    []
@@ -315,15 +224,142 @@ string dec2bin(unsigned n, int num_of_digit)
     return res;
 }
 
-void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSize){
-    Abc_Obj_t *pNode, *qNode;
-    int j, max = 0;
-    Abc_NtkForEachNode(mffc, pNode, j){
-        if(Abc_ObjId(pNode) > max) max = Abc_ObjId(pNode);
+
+
+/**Function*************************************************************
+
+  Synopsis    []
+
+  Description [Core function for approximation]
+
+***********************************************************************/
+Mffc* local_approx(Abc_Ntk_t* pNtk, Mffc* mffc, int PiSize, int min_level){
+
+    //Choose a mffc
+
+    int* PiSet = new int[PiSize];
+    int i, j = 0;
+    Abc_Obj_t* pNode;
+    Abc_NtkForEachPi(mffc->ref, pNode, i){
+        pNode->iTemp = 0;
+        PiSet[j] = Abc_ObjId(pNode);
+        j++;
     }
-    Abc_NtkForEachNode(mffc, pNode, j){
-        if(Abc_ObjId(pNode) == max) continue;
-        Abc_NtkDeleteObj(pNode);
+
+    pattern *pt, *pt_min = nullptr;
+    vector<pattern *> pt_set;
+    vector<pattern *>::size_type ix_pt;
+    int *nC4 = nullptr;
+    int index;
+    decomposed_chart *dc, *dc_min = nullptr;
+    vector<decomposed_chart *> dc_set;
+    vector<decomposed_chart *>::size_type ix_dc;
+
+    int rounds = PiSize/4;
+    for(int ii = 0; ii < rounds; ii++) {
+        if(ii > 0) break;
+        int *bSet = new int[4]{0};
+        int *fSet = new int[PiSize - 4]{0};
+        int *bSet_min = new int[4];
+        int *fSet_min = new int[PiSize - 4];
+
+        int loop_size = 10;
+        //int loop_size = NChooseR(PiSize, 4);
+        for (i = 0; i < loop_size; i++) {
+            index = i;//3
+            //nC4 = PiSet;
+            nC4 = choose_four(PiSet, PiSize, index);
+            for (j = 0; j < PiSize; j++) {
+                if (j < 4) bSet[j] = nC4[j];
+                else fSet[j - 4] = nC4[j];
+            }
+            //Assigning Pis to bound set and free set
+            delete[] nC4;
+
+            dc = create_decomposed_chart(mffc->ref, bSet, fSet, PiSize, min_level);
+            dc_set.push_back(dc);
+            //int lvl = Abc_NtkLevel(pNtk);
+            //cout <<  << endl;
+            //simulate_whole(pNtk);
+            create_weight(dc, mffc->ref, pNtk, mffc->Pi_origin);
+            //Create_Weight(dc, *mffc, bSet, fSet);
+
+            pt = new pattern(16, (int) pow(2, PiSize - 4));
+            pt_set.push_back(pt);
+            pt->pattern_cracker(dc->decompose_chart, dc->weight);
+            if (i == 0) {
+                pt_min = pt;
+                dc_min = dc;
+                for (int k = 0; k < PiSize; k++) {
+                    if (k < 4) bSet_min[k] = bSet[k];
+                    else fSet_min[k - 4] = fSet[k - 4];
+                }
+            } else {
+                if (pt->get_error() < pt_min->get_error()) {
+                    //delete dc_min;
+                    //delete pt_min;
+                    dc_min = dc;
+                    pt_min = pt;
+                    for (int k = 0; k < PiSize; k++) {
+                        if (k < 4) bSet_min[k] = bSet[k];
+                        else fSet_min[k - 4] = fSet[k - 4];
+                    }
+                }
+            }
+            if (pt_min->get_error() == 0) break;
+
+
+        }
+
+        assert(pt_min && dc_min);
+        //Find the minimum pattern
+        mffc->error += pt_min->get_error();
+        dc_min->print_decomposed_chart();
+        //dc_min->print_weight();
+        pt_min->print_info(false);
+
+        modify_mffc(mffc->ref, pt_min, bSet_min, fSet_min, PiSize - 4);
+        /*
+        for(i = 0; i < 4; i++){
+            Abc_NtkObj(mffc->ref, bSet_min[i])->iTemp = 1;
+        }
+        */
+        for (ix_dc = 0; ix_dc != dc_set.size(); ix_dc++) {
+            if (dc_set[ix_dc] == dc_min) continue;
+            else delete dc_set[ix_dc];
+        }
+        for (ix_pt = 0; ix_pt != pt_set.size(); ix_pt++) {
+            if (pt_set[ix_pt] == pt_min) continue;
+            else delete pt_set[ix_pt];
+        }
+        delete[] PiSet;
+        delete[] bSet_min;
+        delete[] fSet_min;
+        delete[] bSet;
+        delete[] fSet;
+        delete dc_min;
+        delete pt_min;
+
+    }
+
+    return mffc;
+}
+
+void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSize, bool initial){
+    Abc_Obj_t *pNode, *qNode, *vicNode;
+    int j, max = 0;
+    if(initial) {
+        Abc_NtkForEachNode(mffc, pNode, j) {
+                if (Abc_ObjId(pNode) > max) max = Abc_ObjId(pNode);
+            }
+        Abc_NtkForEachNode(mffc, pNode, j) {
+                if (Abc_ObjId(pNode) == max) continue;
+                Abc_NtkDeleteObj(pNode);
+            }
+    }else{
+        vicNode = Abc_NtkObj(mffc, Abc_NtkPo(mffc, 0)->vFanins.pArray[0]);
+        Abc_NtkDeleteObj(vicNode);
+        //
     }
     //Delete old node
 
@@ -336,76 +372,60 @@ void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSiz
     }
     else {
         pNode = Abc_NtkCreateNode(mffc);
-        //Create node
-        //Assign name
         for (int i = 0; i < 4; i++) {
             qNode = Abc_NtkObj(mffc, bset[i]);
             Abc_ObjAddFanin(pNode, qNode);
         }
-        //Assign fain-in and fain-out
     }
+    //Create bound set node
     string temp = std::to_string(Abc_ObjId(pNode));
     Nm_ManStoreIdName(mffc->pManName, Abc_ObjId(pNode), ABC_OBJ_NODE, (char *) "n", (char *) temp.c_str());
+    //Asign name
     //cout << "New node has name " << Abc_ObjName(pNode) << endl;
-    //qNode = Abc_NtkPo(mffc, 0);
-    //Abc_ObjRemoveFanins(qNode);
-    //Abc_ObjAddFanin(qNode, pNode);
-
 
     vector<int>::size_type ix;
     static char buffer[2000] = {0};
     string s;
-    //char s[4];
-    //int n;
     for(ix = 0; ix != numerical_pattern.size(); ix++){
-        /*
-        n = numerical_pattern[ix];
-        for(int i = 0; i < 4; i++){
-            s[4-i] = (n & 1) + '0';
-            n >>= 1;
-        }
-         */
         s = dec2bin((unsigned)numerical_pattern[ix], 4);
         //cout << s << endl;
         sprintf(buffer, "%s%s 1\n", buffer, s.c_str());
     }
 
     pNode->pData = buffer;
-    //Nodes for bound set
+    //Assign pData
 
     Abc_Obj_t* endNode = Abc_NtkCreateNode(mffc);
+    //Create auxiliary node(used to connected to Po)
     temp = std::to_string(Abc_ObjId(endNode));
     Nm_ManStoreIdName(mffc->pManName, Abc_ObjId(endNode), ABC_OBJ_NODE, (char *) "n", (char *) temp.c_str());
+    //Create name
     Abc_ObjAddFanin(endNode, pNode);
     for(int i = 0; i < fSetSize; i++) {
         Abc_ObjAddFanin(endNode, Abc_NtkObj(mffc, fset[i]));
     }
-    //Nodes for free set
+    //Assign free set as endNodes's fanin
     endNode->pData = (char*)"10 1\n";
 
-    static char buffer2[2000] = {0};
+    static char buffer2[20000] = {0};
     auto pattern_type = pt->get_pattern_type();
     for(int i = 0; i != pt->get_row_size(); i++){
+        s = dec2bin((unsigned)i, fSetSize);
         switch(pattern_type[i]){
             case(ALL_ONE):{
-                for(j = 0; j < fSetSize+1; j++)
-                    sprintf(buffer2, "%s1", buffer2);
-                sprintf(buffer2, "%s 1\n", buffer2);
+                sprintf(buffer2, "%s-%s 1\n", buffer2, s.c_str());
                 break;
             }
             case(ALL_ZERO):{
-                for(j = 0; j < fSetSize+1; j++)
-                    sprintf(buffer2, "%s0", buffer2);
-                sprintf(buffer2, "%s 1\n", buffer2);
                 break;
             }
             case(PATTERN):{
-                s = dec2bin((unsigned)i, fSetSize);
+                //s = dec2bin((unsigned)i, fSetSize);
                 sprintf(buffer2, "%s1%s 1\n", buffer2, s.c_str());
                 break;
             }
             case(COMPLTD_PATTERN):{
-                s = dec2bin((unsigned)i, fSetSize);
+                //s = dec2bin((unsigned)i, fSetSize);
                 sprintf(buffer2, "%s0%s 1\n", buffer2, s.c_str());
                 break;
             }
@@ -415,6 +435,7 @@ void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSiz
 
     //cout << buffer << endl;
     endNode->pData = buffer2;
+    //Endnode's pData
 
 
     qNode = Abc_NtkPo(mffc, 0);
@@ -422,13 +443,8 @@ void modify_mffc(Abc_Ntk_t* mffc, pattern* pt, int* bset, int* fset, int fSetSiz
     Abc_ObjAddFanin(qNode, endNode);
     //Connect to Po
 
-    /*
-    pNode = Abc_NtkPo(mffc, 0);
-    for(int i = 0; i < fSetSize; i++){
-        qNode = Abc_NtkObj(mffc, fset[i]);
-        Abc_ObjAddFanin(pNode, qNode);
-    }
-    //pNode->pData = (char*)"Undecided";
-    */
+
+    //vicNode = Abc_NtkObj(mffc, Abc_NtkPo(mffc, 0)->vFanins.pArray[0]);
+    //cout << "Victim has node name: " << Abc_ObjName(vicNode) << endl;
 }
 
